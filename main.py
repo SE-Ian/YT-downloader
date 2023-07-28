@@ -1,14 +1,36 @@
 from pytube import YouTube, Playlist
 import csv
+import os
+import subprocess
+
+
+def merge_audio_and_video(video_file, audio_file, output_file):
+    # Construct the FFmpeg command
+    cmd = f'ffmpeg -i "{video_file}" -i "{audio_file}" -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 "{output_file}"'
+
+    # Run the FFmpeg command
+    subprocess.call(cmd, shell=True)
 
 
 def Download(link):
     youtubeObject = YouTube(link)
-    youtubeObject = youtubeObject.streams.get_highest_resolution()
-    try:
-        youtubeObject.download()
-    except:
-        print("An error has occurred")
+    video_stream = youtubeObject.streams.filter(
+        progressive=False, file_extension='mp4').order_by('resolution').desc().first()
+    audio_stream = youtubeObject.streams.filter(only_audio=True).first()
+
+    video_file = video_stream.download(filename='video')
+    audio_file = audio_stream.download(filename='audio')
+
+    # Replace invalid characters in the filename
+    output_file = f"{youtubeObject.title}.mp4"
+    for char in [' ', '|', '/', '\\', ':', '*', '?', '"', '<', '>']:
+        output_file = output_file.replace(char, '_')
+
+    merge_audio_and_video(video_file, audio_file, output_file)
+
+    os.remove(video_file)
+    os.remove(audio_file)
+
     print("Download is completed successfully")
 
 
